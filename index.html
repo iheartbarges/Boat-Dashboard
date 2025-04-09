@@ -77,17 +77,20 @@
     };
 
     function updateChart(tempBlock, tempInlet) {
-      const now = new Date().toLocaleTimeString();
-      chartData.labels.push(now);
+      const now = new Date();
+      const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      chartData.labels.push(timeLabel);
       chartData.datasets[0].data.push(tempBlock);
       chartData.datasets[1].data.push(tempInlet);
 
-      if (chartData.labels.length > 30) { // Last ~1 hour (every 2 mins)
+      // Keep data for the last hour (removing the oldest data if there are more than 6 sets of data)
+      if (chartData.labels.length > 60) { // Every 1 min * 60 data points = 60 mins (1 hour)
         chartData.labels.shift();
         chartData.datasets[0].data.shift();
         chartData.datasets[1].data.shift();
       }
 
+      // Update the chart
       chart.update();
     }
 
@@ -143,7 +146,14 @@
           },
           x: {
             ticks: {
-              color: '#f1f1f1'
+              color: '#f1f1f1',
+              callback: function(value, index, values) {
+                // Display only the labels at 10-minute intervals
+                if (index % 10 === 0) {
+                  return values[index];
+                }
+                return '';
+              }
             },
             grid: { color: '#333' }
           }
