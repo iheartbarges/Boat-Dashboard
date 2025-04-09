@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32 Bluetooth Temperature Dashboard</title>
-  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <meta charset="utf-8">
+  <title>ESP32 BLE Temp Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -13,20 +11,13 @@
       color: #f1f1f1;
       text-align: center;
       padding: 2rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      gap: 30px;
     }
     h1 {
       color: #00e5ff;
-      font-size: 3rem;
-      margin-bottom: 1rem;
+      margin-bottom: 2rem;
     }
     .temp-box {
-      font-size: 2rem;
+      font-size: 1.5rem;
       margin: 1rem;
       padding: 1rem;
       background: #1e1e1e;
@@ -34,27 +25,19 @@
       display: inline-block;
       width: 250px;
       box-shadow: 0 4px 10px rgba(0, 229, 255, 0.3);
-      transition: transform 0.3s ease;
-    }
-    .temp-box:hover {
-      transform: scale(1.05);
     }
     button {
       font-size: 1.2rem;
       padding: 0.75rem 2rem;
+      margin-top: 2rem;
       background: #00e5ff;
       color: #000;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      margin-top: 1.5rem;
     }
     canvas {
       max-width: 90%;
-      margin-top: 2rem;
-    }
-    .chart-container {
-      width: 80%;
       margin-top: 2rem;
     }
   </style>
@@ -66,9 +49,7 @@
   <br>
   <button onclick="connectBLE()">Connect to ESP32</button>
 
-  <div class="chart-container">
-    <svg id="tempChart" width="100%" height="400"></svg>
-  </div>
+  <canvas id="tempChart"></canvas>
 
   <script>
     const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
@@ -76,30 +57,43 @@
     const CHARACTERISTIC_INLET_TEMP_UUID = '12345678-1234-5678-1234-56789abcdef2';
 
     let blockCharacteristic, inletCharacteristic;
-    let chartData = {
-      blockTemps: [],
-      inletTemps: [],
-      timestamps: []
+    let chart;
+    const chartData = {
+      labels: [],
+      datasets: [
+        {
+          label: 'Block Temp (°F)',
+          borderColor: '#ff4081',
+          backgroundColor: 'rgba(255, 64, 129, 0.2)',
+          data: [],
+        },
+        {
+          label: 'Inlet Temp (°F)',
+          borderColor: '#00e5ff',
+          backgroundColor: 'rgba(0, 229, 255, 0.2)',
+          data: [],
+        }
+      ]
     };
 
     function updateChart(tempBlock, tempInlet) {
       const now = new Date();
       const timeLabel = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
+      
       // Add the new data points
-      chartData.blockTemps.push(tempBlock);
-      chartData.inletTemps.push(tempInlet);
-      chartData.timestamps.push(timeLabel);
+      chartData.labels.push(timeLabel);
+      chartData.datasets[0].data.push(tempBlock);
+      chartData.datasets[1].data.push(tempInlet);
 
       // Keep only the last 60 minutes of data (1 hour)
-      if (chartData.timestamps.length > 60) {
-        chartData.timestamps.shift();
-        chartData.blockTemps.shift();
-        chartData.inletTemps.shift();
+      if (chartData.labels.length > 60) { 
+        chartData.labels.shift();
+        chartData.datasets[0].data.shift();
+        chartData.datasets[1].data.shift();
       }
 
       // Update the chart
-      renderChart();
+      chart.update();
     }
 
     function connectBLE() {
@@ -138,71 +132,41 @@
     let lastBlock = null;
     let lastInlet = null;
 
-    // D3.js - Render the temperature chart
-    function renderChart() {
-      const svg = d3.select('#tempChart');
-      svg.selectAll("*").remove(); // Clear previous content
-
-      // Set chart dimensions
-      const width = parseInt(svg.style('width'));
-      const height = parseInt(svg.style('height'));
-      const margin = { top: 20, right: 30, bottom: 40, left: 40 };
-
-      const x = d3.scaleBand()
-        .domain(chartData.timestamps)
-        .range([margin.left, width - margin.right])
-        .padding(0.1);
-
-      const y = d3.scaleLinear()
-        .domain([0, d3.max([d3.max(chartData.blockTemps), d3.max(chartData.inletTemps)])])
-        .nice()
-        .range([height - margin.bottom, margin.top]);
-
-      // Add axes
-      svg.append("g")
-        .selectAll(".x-axis")
-        .data(chartData.timestamps)
-        .enter().append("text")
-        .attr("x", d => x(d))
-        .attr("y", height - margin.bottom + 10)
-        .attr("text-anchor", "middle")
-        .style("fill", "white")
-        .text(d => d);
-
-      svg.append("g")
-        .selectAll(".y-axis")
-        .data([y.domain()[0], y.domain()[1]])
-        .enter().append("line")
-        .attr("x1", margin.left)
-        .attr("x2", width - margin.right)
-        .attr("y1", d => y(d))
-        .attr("y2", d => y(d))
-        .attr("stroke", "#333")
-        .attr("stroke-width", 2);
-
-      // Draw Block Temperature Line
-      svg.append("path")
-        .datum(chartData.blockTemps)
-        .attr("fill", "none")
-        .attr("stroke", "#ff4081")
-        .attr("stroke-width", 2)
-        .attr("d", d3.line()
-          .x((d, i) => x(chartData.timestamps[i]))
-          .y(d => y(d))
-        );
-
-      // Draw Inlet Temperature Line
-      svg.append("path")
-        .datum(chartData.inletTemps)
-        .attr("fill", "none")
-        .attr("stroke", "#00e5ff")
-        .attr("stroke-width", 2)
-        .attr("d", d3.line()
-          .x((d, i) => x(chartData.timestamps[i]))
-          .y(d => y(d))
-        );
-    }
-
+    // Chart.js setup
+    chart = new Chart(document.getElementById('tempChart'), {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: false,
+            ticks: {
+              color: '#f1f1f1'
+            },
+            grid: { color: '#333' }
+          },
+          x: {
+            ticks: {
+              color: '#f1f1f1',
+              callback: function(value, index, values) {
+                // Display only the labels at 10-minute intervals
+                if (index % 10 === 0) {
+                  return values[index];
+                }
+                return '';
+              }
+            },
+            grid: { color: '#333' }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#f1f1f1' }
+          }
+        }
+      }
+    });
   </script>
 </body>
-</html>
+</html>  
