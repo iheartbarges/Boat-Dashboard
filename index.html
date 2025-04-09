@@ -3,61 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32 BLE Temp Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121212;
-      color: #f1f1f1;
+      background-color: #121212; /* Dark background for high contrast */
+      color: #fff; /* White text for high visibility */
       text-align: center;
       padding: 2rem;
-    }
-    h1 {
-      color: #00e5ff;
-      margin-bottom: 2rem;
     }
     .temp-box {
       font-size: 1.5rem;
       margin: 1rem;
       padding: 1rem;
-      background: #1e1e1e;
+      background: #333; /* Dark background for temperature boxes */
       border-radius: 10px;
       display: inline-block;
       width: 250px;
-      box-shadow: 0 4px 10px rgba(0, 229, 255, 0.3);
+      box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1); /* Soft white glow */
     }
     button {
       font-size: 1.2rem;
       padding: 0.75rem 2rem;
       margin-top: 2rem;
-      background: #00e5ff;
-      color: #000;
+      background: #ffca28; /* Bright yellow button */
+      color: #000; /* Black text */
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+    .chart-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 2rem;
     }
     canvas {
       max-width: 90%;
-      margin-top: 2rem;
+      border: 2px solid #ffca28; /* Border to match the title */
     }
     #lastUpdate {
       font-size: 1.2rem;
-      color: #00e5ff;
-      margin-top: 1rem;
+      color: #ffca28; /* Matching yellow for the last update text */
     }
   </style>
 </head>
 <body>
-  <h1>ESP32 Bluetooth Temperature Dashboard</h1>
   <div class="temp-box" id="blockTemp">Block Temp: -- °F</div>
   <div class="temp-box" id="inletTemp">Inlet Temp: -- °F</div>
   <br>
   <button onclick="connectBLE()">Connect to ESP32</button>
 
-  <div id="lastUpdate">Last Update: --</div>
-
-  <canvas id="tempChart"></canvas>
+  <div class="chart-container">
+    <canvas id="tempChart"></canvas>
+  </div>
+  
+  <div id="lastUpdate">Last Update: --:--</div>
 
   <script>
     const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
@@ -71,38 +72,30 @@
       datasets: [
         {
           label: 'Block Temp (°F)',
-          borderColor: '#ff4081',
+          borderColor: '#ff4081', /* Pink for block temp */
           backgroundColor: 'rgba(255, 64, 129, 0.2)',
           data: [],
         },
         {
           label: 'Inlet Temp (°F)',
-          borderColor: '#00e5ff',
+          borderColor: '#00e5ff', /* Bright blue for inlet temp */
           backgroundColor: 'rgba(0, 229, 255, 0.2)',
           data: [],
         }
       ]
     };
 
-    let lastUpdateTime = null;  // Store the last update time
-
     function updateChart(tempBlock, tempInlet) {
       const now = new Date();
       const timeLabel = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-      const timestamp = now.toLocaleString();  // Get a human-readable timestamp
-
-      // Only update the chart every minute
-      if (lastUpdateTime && (now - lastUpdateTime) < 60000) {
-        return; // Skip the update if it's been less than a minute
-      }
-
+      
       // Add the new data points
       chartData.labels.push(timeLabel);
       chartData.datasets[0].data.push(tempBlock);
       chartData.datasets[1].data.push(tempInlet);
 
-      // Keep only the last 20 updates
-      if (chartData.labels.length > 20) {
+      // Keep only the last 20 minutes of data
+      if (chartData.labels.length > 20) { 
         chartData.labels.shift();
         chartData.datasets[0].data.shift();
         chartData.datasets[1].data.shift();
@@ -111,11 +104,8 @@
       // Update the chart
       chart.update();
 
-      // Update the last update time
-      lastUpdateTime = now;
-
-      // Display the timestamp of the last update
-      document.getElementById('lastUpdate').innerText = `Last Update: ${timestamp}`;
+      // Update last update time
+      document.getElementById('lastUpdate').innerText = `Last Update: ${timeLabel}`;
     }
 
     function connectBLE() {
@@ -154,7 +144,7 @@
     let lastBlock = null;
     let lastInlet = null;
 
-    // Chart.js setup with smooth line curve and limited data points
+    // Chart.js setup
     chart = new Chart(document.getElementById('tempChart'), {
       type: 'line',
       data: chartData,
@@ -164,32 +154,24 @@
           y: {
             beginAtZero: false,
             ticks: {
-              color: '#f1f1f1'
+              color: '#fff' /* White ticks for high contrast */
             },
-            grid: { color: '#333' }
+            grid: { color: '#444' }
           },
           x: {
             ticks: {
-              color: '#f1f1f1',
+              color: '#fff', /* White ticks */
               callback: function(value, index, values) {
-                // Display only the labels at 5-minute intervals
-                if (index % 5 === 0) {
-                  return values[index];
-                }
-                return '';
+                // Show time at each data point
+                return chartData.labels[index] || '';
               }
             },
-            grid: { color: '#333' }
+            grid: { color: '#444' }
           }
         },
         plugins: {
           legend: {
-            labels: { color: '#f1f1f1' }
-          }
-        },
-        elements: {
-          line: {
-            tension: 0.4  // Smooth curved line
+            labels: { color: '#fff' }
           }
         }
       }
