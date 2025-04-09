@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32 BLE Temp Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121212;
-      color: #f1f1f1;
+      background-color: #121212; /* Dark background for high contrast */
+      color: #fff; /* White text for high visibility */
       text-align: center;
       padding: 2rem;
     }
@@ -17,25 +16,35 @@
       font-size: 1.5rem;
       margin: 1rem;
       padding: 1rem;
-      background: #1e1e1e;
+      background: #333; /* Dark background for temperature boxes */
       border-radius: 10px;
       display: inline-block;
       width: 250px;
-      box-shadow: 0 4px 10px rgba(0, 229, 255, 0.3);
+      box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1); /* Soft white glow */
     }
     button {
       font-size: 1.2rem;
       padding: 0.75rem 2rem;
       margin-top: 2rem;
-      background: #00e5ff;
-      color: #000;
+      background: #ffca28; /* Bright yellow button */
+      color: #000; /* Black text */
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+    .chart-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 2rem;
     }
     canvas {
       max-width: 90%;
-      margin-top: 2rem;
+      border: 2px solid #ffca28; /* Border to match the title */
+    }
+    #lastUpdate {
+      font-size: 1.2rem;
+      color: #ffca28; /* Matching yellow for the last update text */
     }
   </style>
 </head>
@@ -45,7 +54,11 @@
   <br>
   <button onclick="connectBLE()">Connect to ESP32</button>
 
-  <canvas id="tempChart"></canvas>
+  <div class="chart-container">
+    <canvas id="tempChart"></canvas>
+  </div>
+  
+  <div id="lastUpdate">Last Update: --:--</div>
 
   <script>
     const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
@@ -55,17 +68,17 @@
     let blockCharacteristic, inletCharacteristic;
     let chart;
     const chartData = {
-      labels: [], // Time labels
+      labels: [],
       datasets: [
         {
           label: 'Block Temp (°F)',
-          borderColor: '#ff4081',
+          borderColor: '#ff4081', /* Pink for block temp */
           backgroundColor: 'rgba(255, 64, 129, 0.2)',
           data: [],
         },
         {
           label: 'Inlet Temp (°F)',
-          borderColor: '#00e5ff',
+          borderColor: '#00e5ff', /* Bright blue for inlet temp */
           backgroundColor: 'rgba(0, 229, 255, 0.2)',
           data: [],
         }
@@ -75,31 +88,34 @@
     function updateChart(tempBlock, tempInlet) {
       const now = new Date();
       const timeLabel = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
+      
       // Add the new data points
       chartData.labels.push(timeLabel);
       chartData.datasets[0].data.push(tempBlock);
       chartData.datasets[1].data.push(tempInlet);
 
-      // Keep only the last 20 updates
-      if (chartData.labels.length > 20) {
-        chartData.labels.shift(); // Remove the oldest label
-        chartData.datasets[0].data.shift(); // Remove the oldest data
-        chartData.datasets[1].data.shift(); // Remove the oldest data
+      // Keep only the last 15 minutes of data (15 entries)
+      if (chartData.labels.length > 15) { 
+        chartData.labels.shift();
+        chartData.datasets[0].data.shift();
+        chartData.datasets[1].data.shift();
       }
 
       // Update the chart
       chart.update();
+
+      // Update last update time
+      document.getElementById('lastUpdate').innerText = `Last Update: ${timeLabel}`;
     }
 
     function connectBLE() {
       navigator.bluetooth.requestDevice({
-        filters: [{ name: 'ESP32_Temperature_Sensor' }],
+        filters: [{ name: 'ESP32_Temperature_Sensor' }], 
         optionalServices: [SERVICE_UUID]
       })
       .then(device => device.gatt.connect())
       .then(server => server.getPrimaryService(SERVICE_UUID))
-      .then(service => Promise.all([ 
+      .then(service => Promise.all([
         service.getCharacteristic(CHARACTERISTIC_BLOCK_TEMP_UUID),
         service.getCharacteristic(CHARACTERISTIC_INLET_TEMP_UUID)
       ]))
@@ -138,35 +154,35 @@
           y: {
             beginAtZero: false,
             ticks: {
-              color: '#f1f1f1'
+              color: '#fff' /* White ticks for high contrast */
             },
-            grid: { color: '#333' }
+            grid: { color: '#444' }
           },
           x: {
             ticks: {
-              color: '#f1f1f1',
+              color: '#fff', /* White ticks */
               callback: function(value, index, values) {
-                // Display label only at every 5th timestamp (5 minutes)
-                return (index % 5 === 0) ? chartData.labels[index] : '';
+                // Show time at each data point
+                return chartData.labels[index] || '';
               }
             },
-            grid: { color: '#333' }
+            grid: { color: '#444' }
           }
         },
         plugins: {
           legend: {
-            labels: { color: '#f1f1f1' }
+            labels: { color: '#fff' }
           }
         }
       }
     });
 
-    // Only update chart every minute
+    // Update the chart every 60 seconds
     setInterval(() => {
-      if (lastBlock !== null && lastInlet !== null) {
+      if (typeof lastBlock === 'number' && typeof lastInlet === 'number') {
         updateChart(lastBlock, lastInlet);
       }
-    }, 60000); // Update every 60 seconds
+    }, 60000);
   </script>
 </body>
 </html>
