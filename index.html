@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temperature Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            margin-top: 50px;
+        }
+
+        .temp {
+            font-size: 40px;
+            margin: 10px;
+            color: #333;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            margin-top: 20px;
+        }
+
+        .btn:disabled {
+            background-color: #d3d3d3;
+        }
+
+        .status {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ESP32 Temperature Dashboard</h1>
+        <button class="btn" id="connectBtn">Connect to ESP32</button>
+        <div id="status" class="status">Status: Not connected</div>
+        <div id="blockTemp" class="temp">Block Temp: -- °F</div>
+        <div id="inletTemp" class="temp">Inlet Temp: -- °F</div>
+    </div>
+
+    <script>
+        const connectButton = document.getElementById('connectBtn');
+        const statusDiv = document.getElementById('status');
+        const blockTempDiv = document.getElementById('blockTemp');
+        const inletTempDiv = document.getElementById('inletTemp');
+
+        const SERVICE_UUID = 'your_service_uuid';  // Replace with your service UUID
+        const CHARACTERISTIC_BLOCK_TEMP_UUID = 'your_block_temp_uuid';  // Replace with your block temperature UUID
+        const CHARACTERISTIC_INLET_TEMP_UUID = 'your_inlet_temp_uuid';  // Replace with your inlet temperature UUID
+
+        let device;
+        let blockTempCharacteristic;
+        let inletTempCharacteristic;
+
+        connectButton.addEventListener('click', () => {
+            connectToDevice();
+        });
+
+        async function connectToDevice() {
+            try {
+                statusDiv.textContent = 'Status: Scanning...';
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: [SERVICE_UUID] }]
+                });
+                statusDiv.textContent = 'Status: Connected!';
+
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+
+                blockTempCharacteristic = await service.getCharacteristic(CHARACTERISTIC_BLOCK_TEMP_UUID);
+                inletTempCharacteristic = await service.getCharacteristic(CHARACTERISTIC_INLET_TEMP_UUID);
+
+                await blockTempCharacteristic.startNotifications();
+                await inletTempCharacteristic.startNotifications();
+
+                blockTempCharacteristic.addEventListener('characteristicvaluechanged', handleBlockTemp);
+                inletTempCharacteristic.addEventListener('characteristicvaluechanged', handleInletTemp);
+            } catch (error) {
+                console.error('Error connecting to device:', error);
+                statusDiv.textContent = 'Status: Error connecting';
+            }
+        }
+
+        function handleBlockTemp(event) {
+            const value = event.target.value;
+            const blockTemp = value.getFloat32(0, true);
+            blockTempDiv.textContent = `Block Temp: ${blockTemp.toFixed(2)} °F`;
+        }
+
+        function handleInletTemp(event) {
+            const value = event.target.value;
+            const inletTemp = value.getFloat32(0, true);
+            inletTempDiv.textContent = `Inlet Temp: ${inletTemp.toFixed(2)} °F`;
+        }
+    </script>
+</body>
+</html>
