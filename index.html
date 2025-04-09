@@ -7,8 +7,8 @@
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121212; /* Dark background for high contrast */
-      color: #fff; /* White text for high visibility */
+      background-color: #121212;
+      color: #fff;
       text-align: center;
       padding: 2rem;
     }
@@ -16,18 +16,18 @@
       font-size: 1.5rem;
       margin: 1rem;
       padding: 1rem;
-      background: #333; /* Dark background for temperature boxes */
+      background: #333;
       border-radius: 10px;
       display: inline-block;
       width: 250px;
-      box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1); /* Soft white glow */
+      box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
     }
     button {
       font-size: 1.2rem;
       padding: 0.75rem 2rem;
       margin-top: 2rem;
-      background: #ffca28; /* Bright yellow button */
-      color: #000; /* Black text */
+      background: #ffca28;
+      color: #000;
       border: none;
       border-radius: 8px;
       cursor: pointer;
@@ -40,11 +40,11 @@
     }
     canvas {
       max-width: 90%;
-      border: 2px solid #ffca28; /* Border to match the title */
+      border: 2px solid #ffca28;
     }
     #lastUpdate {
       font-size: 1.2rem;
-      color: #ffca28; /* Matching yellow for the last update text */
+      color: #ffca28;
     }
   </style>
 </head>
@@ -57,7 +57,7 @@
   <div class="chart-container">
     <canvas id="tempChart"></canvas>
   </div>
-  
+
   <div id="lastUpdate">Last Update: --:--</div>
 
   <script>
@@ -72,13 +72,13 @@
       datasets: [
         {
           label: 'Block Temp (°F)',
-          borderColor: '#ff4081', /* Pink for block temp */
+          borderColor: '#ff4081',
           backgroundColor: 'rgba(255, 64, 129, 0.2)',
           data: [],
         },
         {
           label: 'Inlet Temp (°F)',
-          borderColor: '#00e5ff', /* Bright blue for inlet temp */
+          borderColor: '#00e5ff',
           backgroundColor: 'rgba(0, 229, 255, 0.2)',
           data: [],
         }
@@ -115,7 +115,7 @@
       })
       .then(device => device.gatt.connect())
       .then(server => server.getPrimaryService(SERVICE_UUID))
-      .then(service => Promise.all([
+      .then(service => Promise.all([ 
         service.getCharacteristic(CHARACTERISTIC_BLOCK_TEMP_UUID),
         service.getCharacteristic(CHARACTERISTIC_INLET_TEMP_UUID)
       ]))
@@ -153,36 +153,20 @@
         scales: {
           y: {
             beginAtZero: false,
-            ticks: {
-              color: '#fff' /* White ticks for high contrast */
-            },
+            ticks: { color: '#fff' },
             grid: { color: '#444' }
           },
           x: {
-            ticks: {
-              color: '#fff', /* White ticks */
-              callback: function(value, index, values) {
-                // Show time at each data point
+            ticks: { color: '#fff', callback: function(value, index) {
                 return chartData.labels[index] || '';
               }
             },
             grid: { color: '#444' }
           }
         },
-        plugins: {
-          legend: {
-            labels: { color: '#fff' }
-          }
-        }
+        plugins: { legend: { labels: { color: '#fff' } } }
       }
     });
-
-    // Update the chart every 60 seconds
-    setInterval(() => {
-      if (typeof lastBlock === 'number' && typeof lastInlet === 'number') {
-        updateChart(lastBlock, lastInlet);
-      }
-    }, 60000);
   </script>
 </body>
 </html>
