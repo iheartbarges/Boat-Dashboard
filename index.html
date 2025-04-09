@@ -79,12 +79,14 @@
     function updateChart(tempBlock, tempInlet) {
       const now = new Date();
       const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      // Add the new data points
       chartData.labels.push(timeLabel);
       chartData.datasets[0].data.push(tempBlock);
       chartData.datasets[1].data.push(tempInlet);
 
-      // Keep data for the last hour (removing the oldest data if there are more than 6 sets of data)
-      if (chartData.labels.length > 60) { // Every 1 min * 60 data points = 60 mins (1 hour)
+      // Keep only the last 60 minutes of data (1 hour)
+      if (chartData.labels.length > 60) { 
         chartData.labels.shift();
         chartData.datasets[0].data.shift();
         chartData.datasets[1].data.shift();
